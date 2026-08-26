@@ -132,7 +132,7 @@ def get_last_results(resultsFileName):
     with open(resultsFileName, 'r') as f:
         for line in f:
             words = line.split()
-            if len(words) <= 4:   # branch + commit + compilerVer + md5
+            if len(words) <= 4:   # branch + commit + compilerVer + fingerprint
                 commit = words[1]
                 csize = []
                 cspeed = []
@@ -144,7 +144,7 @@ def get_last_results(resultsFileName):
     return commit, csize, cspeed, dspeed
 
 
-def benchmark_and_compare(branch, commit, last_commit, args, executableName, md5sum, compilerVersion, resultsFileName,
+def benchmark_and_compare(branch, commit, last_commit, args, executableName, sha256sum, compilerVersion, resultsFileName,
                           testFilePath, fileName, last_csize, last_cspeed, last_dspeed):
     sleepTime = 30
     while os.getloadavg()[0] > args.maxLoadAvg:
@@ -158,7 +158,7 @@ def benchmark_and_compare(branch, commit, last_commit, args, executableName, md5
     if len(result) != linesExpected:
         raise RuntimeError("ERROR: number of result lines=%d is different that expected %d\n%s" % (len(result), linesExpected, '\n'.join(result)))
     with open(resultsFileName, "a") as myfile:
-        myfile.write('%s %s %s md5=%s\n' % (branch, commit, compilerVersion, md5sum))
+        myfile.write('%s %s %s sha256=%s\n' % (branch, commit, compilerVersion, sha256sum))
         myfile.write('\n'.join(result) + '\n')
         myfile.close()
         if (last_cspeed == None):
@@ -175,7 +175,7 @@ def benchmark_and_compare(branch, commit, last_commit, args, executableName, md5
             if (float(last_csize[i])/csize[i] < args.ratioLimit):
                 text += "WARNING: %s -%d cSize=%d last_cSize=%d diff=%.4f %s\n" % (executableName, i+1, csize[i], last_csize[i], float(last_csize[i])/csize[i], fileName)
         if text:
-            text = args.message + ("\nmaxLoadAvg=%s  load average at start=%s end=%s\n%s  last_commit=%s  md5=%s\n" % (args.maxLoadAvg, start_load, end_load, compilerVersion, last_commit, md5sum)) + text
+            text = args.message + ("\nmaxLoadAvg=%s  load average at start=%s end=%s\n%s  last_commit=%s  sha256=%s\n" % (args.maxLoadAvg, start_load, end_load, compilerVersion, last_commit, sha256sum)) + text
         return text
 
 
@@ -190,13 +190,13 @@ def update_config_file(branch, commit):
     return last_commit
 
 
-def double_check(branch, commit, args, executableName, md5sum, compilerVersion, resultsFileName, filePath, fileName):
+def double_check(branch, commit, args, executableName, sha256sum, compilerVersion, resultsFileName, filePath, fileName):
     last_commit, csize, cspeed, dspeed = get_last_results(resultsFileName)
     if not args.dry_run:
-        text = benchmark_and_compare(branch, commit, last_commit, args, executableName, md5sum, compilerVersion, resultsFileName, filePath, fileName, csize, cspeed, dspeed)
+        text = benchmark_and_compare(branch, commit, last_commit, args, executableName, sha256sum, compilerVersion, resultsFileName, filePath, fileName, csize, cspeed, dspeed)
         if text:
             log("WARNING: redoing tests for branch %s: commit %s" % (branch, commit))
-            text = benchmark_and_compare(branch, commit, last_commit, args, executableName, md5sum, compilerVersion, resultsFileName, filePath, fileName, csize, cspeed, dspeed)
+            text = benchmark_and_compare(branch, commit, last_commit, args, executableName, sha256sum, compilerVersion, resultsFileName, filePath, fileName, csize, cspeed, dspeed)
     return text
 
 
@@ -207,10 +207,10 @@ def test_commit(branch, commit, last_commit, args, testFilePaths, have_mutt, hav
         execute('make clean; CFLAGS="-Werror -Wconversion -Wno-sign-conversion" CPPFLAGS="-DLZ4_GIT_COMMIT=%s" make -C programs lz4 CC=clang && ' % version +
                 'mv programs/lz4 programs/lz4_clang && ' +
                 'make clean && CPPFLAGS="-DLZ4_GIT_COMMIT=%s" make -C programs lz4 lz4c32 ' % version)
-    md5_lz4 = hashfile(hashlib.md5(), clone_path + '/programs/lz4')
-    md5_lz4c32 = hashfile(hashlib.md5(), clone_path + '/programs/lz4c32')
-    md5_lz4_clang = hashfile(hashlib.md5(), clone_path + '/programs/lz4_clang')
-    print("md5(lz4)=%s\nmd5(lz4c32)=%s\nmd5(lz4_clang)=%s" % (md5_lz4, md5_lz4c32, md5_lz4_clang))
+    sha256_lz4 = hashfile(hashlib.sha256(), clone_path + '/programs/lz4')
+    sha256_lz4c32 = hashfile(hashlib.sha256(), clone_path + '/programs/lz4c32')
+    sha256_lz4_clang = hashfile(hashlib.sha256(), clone_path + '/programs/lz4_clang')
+    print("sha256(lz4)=%s\nsha256(lz4c32)=%s\nsha256(lz4_clang)=%s" % (sha256_lz4, sha256_lz4c32, sha256_lz4_clang))
     print("gcc_version=%s clang_version=%s" % (gcc_version, clang_version))
 
     logFileName = working_path + "/log_" + branch.replace("/", "_") + ".txt"
@@ -220,17 +220,17 @@ def test_commit(branch, commit, last_commit, args, testFilePaths, have_mutt, hav
     for filePath in testFilePaths:
         fileName = filePath.rpartition('/')[2]
         resultsFileName = working_path + "/results_" + branch.replace("/", "_") + "_" + fileName.replace(".", "_") + ".txt"
-        text = double_check(branch, commit, args, 'lz4', md5_lz4, 'gcc_version='+gcc_version, resultsFileName, filePath, fileName)
+        text = double_check(branch, commit, args, 'lz4', sha256_lz4, 'gcc_version='+gcc_version, resultsFileName, filePath, fileName)
         if text:
             text_to_send.append(text)
             results_files += resultsFileName + " "
         resultsFileName = working_path + "/results32_" + branch.replace("/", "_") + "_" + fileName.replace(".", "_") + ".txt"
-        text = double_check(branch, commit, args, 'lz4c32', md5_lz4c32, 'gcc_version='+gcc_version, resultsFileName, filePath, fileName)
+        text = double_check(branch, commit, args, 'lz4c32', sha256_lz4c32, 'gcc_version='+gcc_version, resultsFileName, filePath, fileName)
         if text:
             text_to_send.append(text)
             results_files += resultsFileName + " "
         resultsFileName = working_path + "/resultsClang_" + branch.replace("/", "_") + "_" + fileName.replace(".", "_") + ".txt"
-        text = double_check(branch, commit, args, 'lz4_clang', md5_lz4_clang, 'clang_version='+clang_version, resultsFileName, filePath, fileName)
+        text = double_check(branch, commit, args, 'lz4_clang', sha256_lz4_clang, 'clang_version='+clang_version, resultsFileName, filePath, fileName)
         if text:
             text_to_send.append(text)
             results_files += resultsFileName + " "
