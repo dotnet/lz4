@@ -70,9 +70,9 @@ def get_git_tags():
     return tags
 
 # https://stackoverflow.com/a/19711609/2132223
-def sha1_of_file(filepath):
+def sha256_of_file(filepath):
     with open(filepath, 'rb') as f:
-        return hashlib.sha1(f.read()).hexdigest()
+        return hashlib.sha256(f.read()).hexdigest()
 
 if __name__ == '__main__':
     if sys.platform == "darwin":

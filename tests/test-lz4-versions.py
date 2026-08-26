@@ -75,9 +75,9 @@ def get_git_tags():
     return tags
 
 # https://stackoverflow.com/a/19711609/2132223
-def sha1_of_file(filepath):
+def sha256_of_file(filepath):
     with open(filepath, 'rb') as f:
-        return hashlib.sha1(f.read()).hexdigest()
+        return hashlib.sha256(f.read()).hexdigest()
 
 if __name__ == '__main__':
     error_code = 0
@@ -155,7 +155,7 @@ if __name__ == '__main__':
     print('Enumerate only different compressed files')
     lz4s = sorted(glob.glob('*.lz4'))
     for lz4 in lz4s:
-        print(lz4 + ' : ' + repr(os.path.getsize(lz4)) + ', ' + sha1_of_file(lz4))
+        print(lz4 + ' : ' + repr(os.path.getsize(lz4)) + ', ' + sha256_of_file(lz4))
 
     # Decompress remained .lz4 files by all released lz4c and lz4c32
     print('Decompression tests and verifications')
